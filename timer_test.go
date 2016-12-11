@@ -412,3 +412,18 @@ func TestMultipleTimersForValidTimeouts(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestMultipleTimersConcurrentAddRemove(t *testing.T) {
+	var wg sync.WaitGroup
+
+	for i := 0; i < 100000; i++ {
+		timer := NewTimer(time.Nanosecond)
+		wg.Add(1)
+		go func() {
+			<-timer.C
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+}
