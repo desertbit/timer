@@ -1,4 +1,4 @@
-// A timer implementation with a fixed Reset behavior
+// Package timer is a Go timer implementation with a fixed Reset behavior.
 package timer
 
 import "time"
