@@ -1,5 +1,8 @@
 # Go Timer implementation with a fixed Reset behavior
 
+[![GoDoc](https://godoc.org/github.com/desertbit/timer?status.svg)](https://godoc.org/github.com/desertbit/timer)
+[![Go Report Card](https://goreportcard.com/badge/github.com/desertbit/timer)](https://goreportcard.com/report/github.com/desertbit/timer)
+
 This is a lightweight timer implementation which is a drop-in replacement for
 Go's Timer. Reset behaves as one would expect and drains the timer.C channel automatically.
 The core design of this package is similar to the original runtime timer implementation.
