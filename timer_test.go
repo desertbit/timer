@@ -391,3 +391,24 @@ func TestAfterFuncStop(t *testing.T) {
 		t.Errorf("took ~%v seconds, should be ~2 seconds\n", int(time.Since(start).Seconds()))
 	}
 }
+
+func TestMultipleTimersForValidTimeouts(t *testing.T) {
+	var wg sync.WaitGroup
+
+	for i := 0; i < 1000; i++ {
+		dur := time.Duration(i%11) * time.Second
+		start := time.Now()
+		timer := NewTimer(dur)
+		wg.Add(1)
+		go func() {
+			dur /= time.Second
+			<-timer.C
+			if int(time.Since(start).Seconds()) != int(dur) {
+				t.Errorf("took ~%v seconds, should be ~%v seconds\n", int(time.Since(start).Seconds()), int(dur))
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+}
