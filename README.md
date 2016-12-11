@@ -1,7 +1,8 @@
 # Go Timer implementation with a fixed Reset behavior
 
 This is a lightweight timer implementation which is a drop-in replacement for
-Go's time.Timer. Reset behaves as one would expect and drains the timer.C channel.
+Go's Timer. Reset behaves as one would expect and drains the timer.C channel automatically.
+The core design of this package is similar to the original runtime timer implementation.
 
 These two lines are equivalent except for saving some garbage:
 
