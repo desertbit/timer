@@ -15,7 +15,7 @@ type Timer struct {
 	i    int   // heap index.
 	when int64 // Timer wakes up at when.
 
-	// Callback function called on timeout. This function must not block
+	// f is called in a locked context on timeout. This function must not block
 	// and must behave well-defined.
 	f func(t *time.Time)
 
