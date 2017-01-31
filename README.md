@@ -55,7 +55,7 @@ func main() {
 	timer := time.NewTimer(1 * time.Second)
 
 	// Wait for 2 seconds.
-	// Meanwhile the timer fired filled the channel.
+	// Meanwhile the timer fired and filled the channel.
 	time.Sleep(2 * time.Second)
 
 	// Reset the timer. This should act exactly as creating a new timer.
