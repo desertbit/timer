@@ -40,6 +40,8 @@ The return value exists to preserve compatibility with existing programs.
 
 ## Broken behavior sample
 
+### Sample 1
+
 ```go
 package main
 
@@ -68,5 +70,60 @@ func main() {
 	if int(time.Since(start).Seconds()) != 3 {
 		log.Fatalf("took ~%v seconds, should be ~3 seconds\n", int(time.Since(start).Seconds()))
 	}
+}
+```
+
+### Sample 2
+
+```go
+package main
+
+import "time"
+
+const (
+	keepaliveInterval = 2 * time.Millisecond
+)
+
+var (
+	resetC = make(chan struct{}, 1)
+)
+
+func main() {
+	go keepaliveLoop()
+
+	// Sample routine triggering the reset.
+	// Example: this could be due to incoming peer requests and
+	// a keepalive check should be reset to the max keepalive timeout.
+	for i := 0; i < 1000; i++ {
+		time.Sleep(time.Millisecond)
+		resetKeepalive()
+	}
+}
+
+func resetKeepalive() {
+	// Don't block if there is already a reset request.
+	select {
+	case resetC <- struct{}{}:
+	default:
+	}
+}
+
+func keepaliveLoop() {
+	t := time.NewTimer(keepaliveInterval)
+
+	for {
+		select {
+		case <-resetC:
+			time.Sleep(3 * time.Millisecond) // Simulate some reset work...
+			t.Reset(keepaliveInterval)
+		case <-t.C:
+			ping()
+			t.Reset(keepaliveInterval)
+		}
+	}
+}
+
+func ping() {
+	panic("ping must not be called in this example")
 }
 ```
