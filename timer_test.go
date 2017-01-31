@@ -415,6 +415,69 @@ func TestAterFuncReset(t *testing.T) {
 	}
 }
 
+func TestAterFuncResetDelay(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r != nil {
+			t.Error(r)
+		}
+	}()
+
+	for i := 0; i < 10; i++ {
+		c := make(chan int, 1)
+		t := AfterFunc(1*time.Millisecond, func() {
+			time.Sleep(time.Second)
+			c <- 1
+		})
+		AfterFunc(1*time.Millisecond, func() {
+			t.Reset(100 * time.Second)
+			close(c)
+			t.Stop()
+		})
+		<-c
+		<-c
+	}
+
+	time.Sleep(2 * time.Second)
+}
+
+func TestAterFuncResetWaitForFinished(t *testing.T) {
+	start := time.Now()
+
+	timer := AfterFunc(1*time.Millisecond, func() {
+		time.Sleep(2 * time.Second)
+	})
+
+	time.Sleep(500 * time.Millisecond)
+	timer.Reset(100 * time.Second)
+
+	if int(time.Since(start).Seconds()) != 2 {
+		t.Errorf("took ~%v seconds, should be ~2 seconds\n", int(time.Since(start).Seconds()))
+	}
+}
+
+func TestAterFuncResetNoBlockMainContext(t *testing.T) {
+	c := make(chan struct{})
+	start := time.Now()
+
+	timer := AfterFunc(1*time.Millisecond, func() {
+		// This should not block the main timer context.
+		time.Sleep(3 * time.Second)
+	})
+	time.Sleep(1 * time.Second)
+	go timer.Reset(100 * time.Second)
+
+	AfterFunc(1*time.Millisecond, func() {
+		close(c)
+	})
+
+	<-c
+
+	if int(time.Since(start).Seconds()) != 1 {
+		t.Errorf("took ~%v seconds, should be ~1 seconds\n", int(time.Since(start).Seconds()))
+	}
+}
+
 func TestAterFuncResetDeadlock(t *testing.T) {
 	done := make(chan bool)
 
@@ -432,6 +495,18 @@ func TestAterFuncResetDeadlock(t *testing.T) {
 	if !ok {
 		t.Error()
 	}
+}
+
+// run this with -race
+func TestAfterFuncMultipleRace(t *testing.T) {
+	for i := 0; i < 10000; i++ {
+		t := AfterFunc(1*time.Millisecond, func() {
+
+		})
+		go t.Reset(2 * time.Millisecond)
+	}
+
+	time.Sleep(2 * time.Second)
 }
 
 func TestMultipleTimersForValidTimeouts(t *testing.T) {
