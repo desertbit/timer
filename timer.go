@@ -27,17 +27,19 @@ type Timer struct {
 // AfterFunc waits for the duration to elapse and then calls f in its own goroutine.
 // It returns a Timer that can be used to cancel the call using its Stop method.
 func AfterFunc(d time.Duration, f func()) *Timer {
-	var m sync.RWMutex // Use a RWMutex to allow concurrent callback calls.
+	var m sync.Mutex
 	var ctx uint32
 	t := &Timer{
 		f: func(*time.Time) {
 			fctx := ctx
 			go func() {
-				m.RLock()
-				defer m.RUnlock() // Use defer for panics.
-				if fctx == ctx {
-					f()
+				m.Lock()
+				if fctx != ctx {
+					m.Unlock()
+					return
 				}
+				m.Unlock()
+				f()
 			}()
 		},
 		reset: func() {
