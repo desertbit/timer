@@ -1,7 +1,10 @@
 // Package timer is a Go timer implementation with a fixed Reset behavior.
 package timer
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 // The Timer type represents a single event. When the Timer expires,
 // the current time will be sent on C, unless the Timer was created by AfterFunc.
@@ -9,17 +12,41 @@ import "time"
 type Timer struct {
 	C <-chan time.Time
 
-	i    int                // heap index
-	when int64              // Timer wakes up at when
-	f    func(t *time.Time) // Callback function called on timeout.
+	i    int   // heap index.
+	when int64 // Timer wakes up at when.
+
+	// Callback function called on timeout. This function must not block
+	// and must behave well-defined.
+	f func(t *time.Time)
+
+	// reset is called in a locked context. This function must not block
+	// and must behave well-defined.
+	reset func()
 }
 
 // AfterFunc waits for the duration to elapse and then calls f in its own goroutine.
 // It returns a Timer that can be used to cancel the call using its Stop method.
 func AfterFunc(d time.Duration, f func()) *Timer {
+	var m sync.RWMutex // Use a RWMutex to allow concurrent callback calls.
+	var ctx uint32
 	t := &Timer{
 		f: func(*time.Time) {
-			go f()
+			fctx := ctx
+			go func() {
+				m.RLock()
+				defer m.RUnlock() // Use defer for panics.
+				if fctx == ctx {
+					f()
+				}
+			}()
+		},
+		reset: func() {
+			m.Lock()
+			ctx++
+			if ctx == 1<<32-1 { // math.MaxUint32
+				ctx = 0
+			}
+			m.Unlock()
 		},
 	}
 	addTimer(t, d)
@@ -43,6 +70,13 @@ func NewStoppedTimer() *Timer {
 			// Don't block.
 			select {
 			case c <- *t:
+			default:
+			}
+		},
+		reset: func() {
+			// Empty the channel if filled.
+			select {
+			case <-c:
 			default:
 			}
 		},
@@ -72,16 +106,4 @@ func (t *Timer) Reset(d time.Duration) bool {
 		panic("timer: Reset called on uninitialized Timer")
 	}
 	return resetTimer(t, d)
-}
-
-// reset is called in a locked context. This function must not block
-// and must behave well-defined.
-func (t *Timer) reset() {
-	// Empty the channel if defined.
-	if t.C != nil {
-		select {
-		case <-t.C:
-		default:
-		}
-	}
 }

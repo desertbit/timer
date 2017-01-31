@@ -392,6 +392,48 @@ func TestAfterFuncStop(t *testing.T) {
 	}
 }
 
+func TestAterFuncReset(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r != nil {
+			t.Error(r)
+		}
+	}()
+
+	for i := 0; i < 1000; i++ {
+		c := make(chan int, 1)
+		t := AfterFunc(1*time.Millisecond, func() {
+			c <- 1
+		})
+		AfterFunc(1*time.Millisecond, func() {
+			t.Reset(100 * time.Second)
+			close(c)
+			t.Stop()
+		})
+		<-c
+		<-c
+	}
+}
+
+func TestAterFuncResetDeadlock(t *testing.T) {
+	done := make(chan bool)
+
+	time.AfterFunc(3*time.Second, func() {
+		done <- false
+	})
+
+	AfterFunc(1*time.Second, func() {
+		AfterFunc(1*time.Second, func() {
+			done <- true
+		})
+	})
+
+	ok := <-done
+	if !ok {
+		t.Error()
+	}
+}
+
 func TestMultipleTimersForValidTimeouts(t *testing.T) {
 	var wg sync.WaitGroup
 
