@@ -80,31 +80,6 @@ package main
 
 import "time"
 
-func main() {
-	for {
-		print(".")
-		c := make(chan int, 1)
-		t := time.AfterFunc(1*time.Millisecond, func() {
-			c <- 1
-		})
-		time.AfterFunc(1*time.Millisecond, func() {
-			t.Reset(100 * time.Second)
-			close(c)
-			t.Stop()
-		})
-		<-c
-		<-c
-	}
-}
-```
-
-### Sample 3
-
-```go
-package main
-
-import "time"
-
 const (
 	keepaliveInterval = 2 * time.Millisecond
 )

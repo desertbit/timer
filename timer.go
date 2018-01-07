@@ -2,8 +2,6 @@
 package timer
 
 import (
-	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -20,43 +18,9 @@ type Timer struct {
 	// and must behave well-defined.
 	f func(t *time.Time)
 
-	// preReset is called before the context is locked. This function must not block
-	// and must behave well-defined.
-	preReset func()
-
 	// reset is called in a locked context. This function must not block
 	// and must behave well-defined.
 	reset func()
-}
-
-// AfterFunc waits for the duration to elapse and then calls f in its own goroutine.
-// It returns a Timer that can be used to cancel the call using its Stop method.
-func AfterFunc(d time.Duration, f func()) *Timer {
-	var m sync.RWMutex // Use a RWMutex to allow concurrent callback calls.
-	var ctx uint32
-	t := &Timer{
-		f: func(*time.Time) {
-			fctx := atomic.LoadUint32(&ctx)
-			go func() {
-				m.RLock()
-				defer m.RUnlock()                    // Use defer for panics.
-				if fctx == atomic.LoadUint32(&ctx) { // Might have changed during a blocking RLock().
-					f()
-				}
-			}()
-		},
-		preReset: func() {
-			m.Lock()                  // This will wait until all active f calls are done.
-			atomic.AddUint32(&ctx, 1) // Create a new context value to stop blocked routines (mutex) calling f.
-		},
-		reset: func() {
-			// Unlock first in the locked context when the timer was already removed from the stack.
-			// Otherwise the f callback might be called concurrently.
-			m.Unlock()
-		},
-	}
-	addTimer(t, d)
-	return t
 }
 
 // NewTimer creates a new Timer that will send the current time on its
@@ -110,9 +74,6 @@ func (t *Timer) Stop() (wasActive bool) {
 func (t *Timer) Reset(d time.Duration) bool {
 	if t.f == nil {
 		panic("timer: Reset called on uninitialized Timer")
-	}
-	if t.preReset != nil {
-		t.preReset()
 	}
 	return resetTimer(t, d)
 }
