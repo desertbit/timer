@@ -34,14 +34,6 @@ func TestNegativeTimout(t *testing.T) {
 	}
 }
 
-func TestOverflowTimout(t *testing.T) {
-	timer := NewTimer(1<<63 - 1)
-	defer timer.Stop()
-	if timer.when != 1<<63-1 {
-		t.Errorf("overflow: invalid max value")
-	}
-}
-
 func TestTimeValue(t *testing.T) {
 	// Timeout for 0 seconds.
 	start := time.Now()
@@ -100,7 +92,7 @@ func TestMultipleDifferentTimouts(t *testing.T) {
 
 func TestStoppedTimer(t *testing.T) {
 	timer := NewStoppedTimer()
-	if timer.when != 0 {
+	if !timer.when.IsZero() {
 		t.Errorf("invalid stopped timer when value")
 	}
 
@@ -223,15 +215,6 @@ func TestNegativeReset(t *testing.T) {
 	<-timer.C
 	if int(time.Since(start).Seconds()) != 0 {
 		t.Errorf("took ~%v seconds, should be ~0 seconds\n", int(time.Since(start).Seconds()))
-	}
-}
-
-func TestOverflowReset(t *testing.T) {
-	timer := NewTimer(time.Second)
-	timer.Reset(1<<63 - 1)
-	defer timer.Stop()
-	if timer.when != 1<<63-1 {
-		t.Errorf("overflow: invalid max value")
 	}
 }
 
